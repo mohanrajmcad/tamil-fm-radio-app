@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">MR Radio</string>
+    <string name="play">Play</string>
+    <string name="pause">Pause</string>
+    <string name="cast">Cast</string>
+    <string name="no_station_selected">Select a station to start listening</string>
+</resources>
