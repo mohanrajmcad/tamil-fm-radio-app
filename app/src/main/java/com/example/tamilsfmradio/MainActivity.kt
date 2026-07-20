@@ -83,6 +83,7 @@ class MainActivity : AppCompatActivity() {
 
         applySystemBarInsets()
         requestNotificationPermissionIfNeeded()
+        runOneTimeAutoHideRecovery()
 
         statusText = findViewById(R.id.statusText)
         metadataText = findViewById(R.id.metadataText)
@@ -245,6 +246,21 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * One-time fixup: an earlier build could auto-hide most of the list in one shot if the
+     * reachability check happened to run during a bad network moment (fixed now with a
+     * rate-limit guard, but the damage from that older logic is already persisted on-device).
+     * Clears only the auto-hidden set - anything the user deliberately hid is untouched.
+     */
+    private fun runOneTimeAutoHideRecovery() {
+        val prefs = getSharedPreferences("mr_radio_prefs", MODE_PRIVATE)
+        val key = "migrated_clear_bad_autohide_v1"
+        if (!prefs.getBoolean(key, false)) {
+            HiddenStore.clearAutoHidden(this)
+            prefs.edit().putBoolean(key, true).apply()
+        }
+    }
+
     private fun requestNotificationPermissionIfNeeded() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val granted = ContextCompat.checkSelfPermission(
@@ -290,12 +306,21 @@ class MainActivity : AppCompatActivity() {
                     StationUtils.filterReachable(deduped)
                 }
                 val newlyDead = deduped.filterNot { d -> working.any { it.url == d.url } }
-                if (newlyDead.isNotEmpty()) {
+                // A bad network moment can make many stations fail at once - that's a
+                // connectivity problem, not evidence they're all actually dead. Only trust
+                // the result enough to auto-hide when it's a small, plausible fraction.
+                val failureRate = newlyDead.size.toDouble() / deduped.size.coerceAtLeast(1)
+                if (newlyDead.isNotEmpty() && failureRate <= 0.25) {
                     Log.d("MainActivity", "Auto-hiding ${newlyDead.size} dead stations")
-                    newlyDead.forEach { HiddenStore.hide(this@MainActivity, it.url) }
+                    newlyDead.forEach { HiddenStore.autoHide(this@MainActivity, it.url) }
                     val visibleCount = allStations.count { !HiddenStore.isHidden(this@MainActivity, it.url) }
                     statusText.text = "Loaded $visibleCount Tamil stations"
                     refreshDisplayList()
+                } else if (newlyDead.isNotEmpty()) {
+                    Log.w(
+                        "MainActivity",
+                        "Skipping auto-hide: ${newlyDead.size}/${deduped.size} failed reachability - looks like a network issue"
+                    )
                 }
             } catch (e: Exception) {
                 Log.e("MainActivity", "Error loading stations: ${e.message}", e)

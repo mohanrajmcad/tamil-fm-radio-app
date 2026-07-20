@@ -3,6 +3,7 @@ package com.example.tamilsfmradio
 import android.app.PendingIntent
 import android.content.Intent
 import android.net.Uri
+import android.os.Bundle
 import android.util.Log
 import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
@@ -12,10 +13,14 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.session.CommandButton
 import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.LibraryResult
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
+import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionCommands
+import androidx.media3.session.SessionResult
 import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
@@ -31,6 +36,7 @@ class RadioPlaybackService : MediaLibraryService() {
 
     companion object {
         private const val TAG = "RadioPlaybackService"
+        private const val ACTION_TOGGLE_FAVORITE = "com.example.tamilsfmradio.TOGGLE_FAVORITE"
     }
 
     private lateinit var player: ExoPlayer
@@ -70,8 +76,31 @@ class RadioPlaybackService : MediaLibraryService() {
         notificationProvider.setSmallIcon(R.drawable.ic_notification)
         setMediaNotificationProvider(notificationProvider)
 
+        // Keep the favorite button (notification, lock screen, Android Auto now-playing
+        // screen) in sync whenever the station changes, including via native prev/next.
+        player.addListener(object : Player.Listener {
+            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                refreshFavoriteButton()
+            }
+        })
+        refreshFavoriteButton()
+
         // Fetch stations proactively in the background
         fetchStations()
+    }
+
+    private fun favoriteCommandButton(isFavorite: Boolean): CommandButton {
+        return CommandButton.Builder()
+            .setDisplayName(if (isFavorite) "Remove favorite" else "Add favorite")
+            .setSessionCommand(SessionCommand(ACTION_TOGGLE_FAVORITE, Bundle.EMPTY))
+            .setIconResId(if (isFavorite) R.drawable.ic_favorite_filled else R.drawable.ic_favorite_outline)
+            .build()
+    }
+
+    private fun refreshFavoriteButton() {
+        val mediaId = player.currentMediaItem?.mediaId
+        val isFavorite = mediaId != null && FavoritesStore.isFavorite(this, mediaId)
+        mediaLibrarySession.setCustomLayout(listOf(favoriteCommandButton(isFavorite)))
     }
 
     private fun fetchStations() {
@@ -94,18 +123,30 @@ class RadioPlaybackService : MediaLibraryService() {
                     StationUtils.filterReachable(deduped)
                 }
                 if (working.size != deduped.size && working.isNotEmpty()) {
-                    Log.d(TAG, "fetchStations: pruned to ${working.size} stations")
                     val newlyDead = deduped.filterNot { d -> working.any { it.url == d.url } }
-                    newlyDead.forEach { HiddenStore.hide(this@RadioPlaybackService, it.url) }
-                    cachedMediaItems = working.map { it.toMediaItem() }
-                    // Don't yank the timeline out from under something that's actually
-                    // playing - only swap the live player if it's still in the set,
-                    // preserving its position; otherwise the trimmed list just applies
-                    // to whatever gets browsed/seeked next.
-                    val currentId = player.currentMediaItem?.mediaId
-                    val newIndex = working.indexOfFirst { it.url == currentId }
-                    if (newIndex >= 0) {
-                        setPlayerPlaylist(cachedMediaItems, newIndex, player.currentPosition)
+                    // A bad network moment can make many stations fail at once - that's a
+                    // connectivity problem, not evidence they're all actually dead. Only
+                    // trust the result enough to auto-hide when it's a small, plausible
+                    // fraction; otherwise leave the full list alone.
+                    val failureRate = newlyDead.size.toDouble() / deduped.size.coerceAtLeast(1)
+                    if (failureRate <= 0.25) {
+                        Log.d(TAG, "fetchStations: pruned to ${working.size} stations")
+                        newlyDead.forEach { HiddenStore.autoHide(this@RadioPlaybackService, it.url) }
+                        cachedMediaItems = working.map { it.toMediaItem() }
+                        // Don't yank the timeline out from under something that's actually
+                        // playing - only swap the live player if it's still in the set,
+                        // preserving its position; otherwise the trimmed list just applies
+                        // to whatever gets browsed/seeked next.
+                        val currentId = player.currentMediaItem?.mediaId
+                        val newIndex = working.indexOfFirst { it.url == currentId }
+                        if (newIndex >= 0) {
+                            setPlayerPlaylist(cachedMediaItems, newIndex, player.currentPosition)
+                        }
+                    } else {
+                        Log.w(
+                            TAG,
+                            "fetchStations: skipping auto-hide, ${newlyDead.size}/${deduped.size} failed - looks like a network issue"
+                        )
                     }
                 }
             } catch (e: Exception) {
@@ -184,9 +225,15 @@ class RadioPlaybackService : MediaLibraryService() {
             params: LibraryParams?
         ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> {
             if (parentId == "ROOT") {
+                return Futures.immediateFuture(
+                    LibraryResult.ofItemList(CATEGORY_FOLDERS, params)
+                )
+            }
+
+            if (parentId in CATEGORY_IDS) {
                 if (cachedMediaItems.isNotEmpty()) {
                     return Futures.immediateFuture(
-                        LibraryResult.ofItemList(ImmutableList.copyOf(cachedMediaItems), params)
+                        LibraryResult.ofItemList(childrenForCategory(parentId), params)
                     )
                 }
 
@@ -198,7 +245,7 @@ class RadioPlaybackService : MediaLibraryService() {
                         cachedMediaItems = stations.map { it.toMediaItem() }
                         setPlayerPlaylist(cachedMediaItems)
                         future.set(
-                            LibraryResult.ofItemList(ImmutableList.copyOf(cachedMediaItems), params)
+                            LibraryResult.ofItemList(childrenForCategory(parentId), params)
                         )
                     } catch (e: Exception) {
                         future.setException(e)
@@ -208,6 +255,36 @@ class RadioPlaybackService : MediaLibraryService() {
             }
 
             return Futures.immediateFuture(LibraryResult.ofItemList(ImmutableList.of(), params))
+        }
+
+        override fun onConnect(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo
+        ): MediaSession.ConnectionResult {
+            val defaultResult = super.onConnect(session, controller)
+            val sessionCommands = defaultResult.availableSessionCommands.buildUpon()
+                .add(SessionCommand(ACTION_TOGGLE_FAVORITE, Bundle.EMPTY))
+                .build()
+            return MediaSession.ConnectionResult.accept(sessionCommands, defaultResult.availablePlayerCommands)
+        }
+
+        override fun onCustomCommand(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo,
+            customCommand: SessionCommand,
+            args: Bundle
+        ): ListenableFuture<SessionResult> {
+            Log.d(TAG, "onCustomCommand: ${customCommand.customAction} from ${controller.packageName}")
+            if (customCommand.customAction == ACTION_TOGGLE_FAVORITE) {
+                val mediaId = player.currentMediaItem?.mediaId
+                if (mediaId != null) {
+                    val nowFavorite = FavoritesStore.toggle(this@RadioPlaybackService, mediaId)
+                    Log.d(TAG, "onCustomCommand: toggled favorite for $mediaId -> $nowFavorite")
+                    refreshFavoriteButton()
+                }
+                return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+            }
+            return super.onCustomCommand(session, controller, customCommand, args)
         }
 
         override fun onAddMediaItems(
@@ -238,6 +315,42 @@ class RadioPlaybackService : MediaLibraryService() {
             }
             return future
         }
+    }
+
+    private val CATEGORY_IDS = setOf("ALL", "FAVORITES", "HIDDEN")
+
+    private val CATEGORY_FOLDERS: ImmutableList<MediaItem> by lazy {
+        ImmutableList.of(
+            categoryFolder("ALL", "All Stations"),
+            categoryFolder("FAVORITES", "★ Favorites"),
+            categoryFolder("HIDDEN", "🚫 Hidden")
+        )
+    }
+
+    private fun categoryFolder(id: String, title: String): MediaItem {
+        return MediaItem.Builder()
+            .setMediaId(id)
+            .setMediaMetadata(
+                MediaMetadata.Builder()
+                    .setIsPlayable(false)
+                    .setIsBrowsable(true)
+                    .setMediaType(MediaMetadata.MEDIA_TYPE_FOLDER_MIXED)
+                    .setTitle(title)
+                    .build()
+            )
+            .build()
+    }
+
+    /** Same All/Favorites/Hidden split shown on the phone app, mirrored for Android Auto. */
+    private fun childrenForCategory(category: String): ImmutableList<MediaItem> {
+        val favorites = FavoritesStore.getAll(this)
+        val hidden = HiddenStore.getAll(this)
+        val filtered = when (category) {
+            "FAVORITES" -> cachedMediaItems.filter { it.mediaId in favorites && it.mediaId !in hidden }
+            "HIDDEN" -> cachedMediaItems.filter { it.mediaId in hidden }
+            else -> cachedMediaItems.filter { it.mediaId !in hidden }
+        }
+        return ImmutableList.copyOf(filtered)
     }
 
     private fun RadioStation.toMediaItem(): MediaItem {
