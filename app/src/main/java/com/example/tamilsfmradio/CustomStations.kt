@@ -266,6 +266,43 @@ object CustomStations {
             tags = "tamil",
             codec = "AAC",
             isVerifiedLive = true
+        ),
+
+        // Fourth pass: major Sri Lankan Tamil broadcasters, found via a Sri Lanka radio
+        // directory rather than the Tamil-specific ones used above (those turned up mostly
+        // dead links this round - Chennai FM mirrors, several rcast.net entries, and an AIR
+        // Puducherry stream all confirmed dead; Singapore's Oli 96.8FM is geo-blocked outside
+        // Singapore so left out despite resolving).
+
+        // Sri Lanka Broadcasting Corporation's own national Tamil service - icy-name
+        // confirmed "Tamil National" at verification time.
+        RadioStation(
+            name = "SLBC Tamil National Service",
+            url = "http://220.247.227.6:8000/Tnsstream",
+            bitrate = 128,
+            country = "Sri Lanka",
+            tags = "tamil",
+            codec = "MP3",
+            isVerifiedLive = true
+        ),
+        RadioStation(
+            name = "Thendral FM",
+            url = "http://220.247.227.20:8000/Threndralstream",
+            bitrate = 128,
+            country = "Sri Lanka",
+            tags = "tamil",
+            codec = "MP3",
+            isVerifiedLive = true
+        ),
+        // Sri Lanka Rupavahini's Tamil-language channel.
+        RadioStation(
+            name = "Vasantham FM",
+            url = "https://cp12.serverse.com/proxy/vasanthamfm?mp=/stream",
+            bitrate = 128,
+            country = "Sri Lanka",
+            tags = "tamil",
+            codec = "MP3",
+            isVerifiedLive = true
         )
     )
 }
