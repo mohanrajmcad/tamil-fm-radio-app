@@ -303,6 +303,27 @@ object CustomStations {
             tags = "tamil",
             codec = "MP3",
             isVerifiedLive = true
+        ),
+
+        // User-supplied - radiobeat.in, DJ Muruga's Tamil radio network (Chennai). Both
+        // curl-verified (audio/mpeg, icy-br 192) before adding.
+        RadioStation(
+            name = "Radio Beat",
+            url = "https://live.djmuruga.com/listen/radio_beat/radio.mp3",
+            bitrate = 192,
+            country = "India",
+            tags = "tamil",
+            codec = "MP3",
+            isVerifiedLive = true
+        ),
+        RadioStation(
+            name = "Radio Beat Love",
+            url = "https://live.djmuruga.com/listen/radio_beat_love/radio.mp3",
+            bitrate = 192,
+            country = "India",
+            tags = "tamil",
+            codec = "MP3",
+            isVerifiedLive = true
         )
     )
 }
