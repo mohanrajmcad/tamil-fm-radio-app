@@ -180,15 +180,21 @@ class RadioPlaybackService : MediaLibraryService() {
         }
     }
 
-    private suspend fun prepareStations(): List<RadioStation> {
+    /**
+     * Fast path only - dedupe/prettify, no reachability check. Android Auto (and any other
+     * MediaBrowser client) calls onGetChildren() expecting a prompt result; the reachability
+     * probe alone can take up to ~15s, which is long enough for a head unit to consider the
+     * browse request hung and show an error instead of the station list. The slower,
+     * reachability-filtered list still gets published in the background by fetchStations()
+     * (already kicked off from onCreate()), same as the phone UI's own quick-set-then-refine
+     * pattern.
+     */
+    private suspend fun prepareQuickStations(): List<RadioStation> {
         val raw = withContext(Dispatchers.IO) {
             RadioBrowserClient.getTamilStations()
         }
-        val deduped = StationUtils.filterQuality(StationUtils.dedupe(raw))
+        return StationUtils.filterQuality(StationUtils.dedupe(raw))
             .map { it.copy(name = StationUtils.prettify(it.name)) }
-        return withContext(Dispatchers.IO) {
-            StationUtils.filterReachable(deduped)
-        }
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? {
@@ -241,7 +247,7 @@ class RadioPlaybackService : MediaLibraryService() {
                 val future = SettableFuture.create<LibraryResult<ImmutableList<MediaItem>>>()
                 serviceScope.launch {
                     try {
-                        val stations = prepareStations()
+                        val stations = prepareQuickStations()
                         cachedMediaItems = stations.map { it.toMediaItem() }
                         setPlayerPlaylist(cachedMediaItems)
                         future.set(

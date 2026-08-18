@@ -6,56 +6,39 @@
     android:layout_height="match_parent"
     android:padding="16dp">
 
-    <TextView
-        android:id="@+id/titleText"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:text="@string/app_name"
-        android:textSize="24sp"
-        android:textStyle="bold"
-        android:gravity="center"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
-
-    <ProgressBar
-        android:id="@+id/loadingSpinner"
+    <LinearLayout
+        android:id="@+id/titleRow"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:visibility="gone"
-        app:layout_constraintTop_toBottomOf="@id/titleText"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        app:layout_constraintEnd_toEndOf="parent">
 
-    <TextView
-        android:id="@+id/statusText"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:text="Select a station"
-        android:layout_marginTop="8dp"
-        android:gravity="center"
-        app:layout_constraintTop_toBottomOf="@id/loadingSpinner"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        <TextView
+            android:id="@+id/titleText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/app_name"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:gravity="center" />
 
-    <TextView
-        android:id="@+id/metadataText"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:text="No station playing"
-        android:layout_marginTop="4dp"
-        android:gravity="center"
-        android:textSize="12sp"
-        android:textColor="#888888"
-        app:layout_constraintTop_toBottomOf="@id/statusText"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        <androidx.mediarouter.app.MediaRouteButton
+            android:id="@+id/topCastButton"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_marginStart="10dp"
+            android:mediaRouteTypes="user" />
+
+    </LinearLayout>
 
     <EditText
         android:id="@+id/searchInput"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
+        android:layout_marginTop="10dp"
         android:hint="🔍 Search name or bitrate (e.g. 300)"
         android:inputType="text"
         android:maxLines="1"
@@ -67,7 +50,7 @@
         android:background="@drawable/search_field_background"
         android:textColor="?attr/colorOnSurfaceVariant"
         android:textColorHint="?attr/colorOnSurfaceVariant"
-        app:layout_constraintTop_toBottomOf="@id/metadataText"
+        app:layout_constraintTop_toBottomOf="@id/titleRow"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
@@ -88,7 +71,6 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:checked="true"
             android:textSize="12sp"
             android:paddingStart="4dp"
             android:paddingEnd="4dp"
@@ -100,6 +82,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
+            android:checked="true"
             android:textSize="12sp"
             android:paddingStart="4dp"
             android:paddingEnd="4dp"
@@ -118,69 +101,282 @@
 
     </com.google.android.material.button.MaterialButtonToggleGroup>
 
+    <HorizontalScrollView
+        android:id="@+id/sortFilterScroll"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:scrollbars="none"
+        app:layout_constraintTop_toBottomOf="@id/stationFilterToggle"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <com.google.android.material.button.MaterialButtonToggleGroup
+                android:id="@+id/sortToggle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:selectionRequired="false"
+                app:singleSelection="true">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/sortByQualityButton"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="11sp"
+                    android:paddingStart="10dp"
+                    android:paddingEnd="10dp"
+                    android:text="⇅ Quality" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/sortByNameButton"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="11sp"
+                    android:paddingStart="10dp"
+                    android:paddingEnd="10dp"
+                    android:text="A-Z Name" />
+
+            </com.google.android.material.button.MaterialButtonToggleGroup>
+
+            <View
+                android:layout_width="10dp"
+                android:layout_height="1dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/qualityFilterButton"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="11sp"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:text="Quality: Any ▾" />
+
+        </LinearLayout>
+
+    </HorizontalScrollView>
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/stationList"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:layout_marginTop="12dp"
-        app:layout_constraintTop_toBottomOf="@id/stationFilterToggle"
-        app:layout_constraintBottom_toTopOf="@id/controlsLayout"
+        android:layout_marginTop="10dp"
+        app:layout_constraintTop_toBottomOf="@id/sortFilterScroll"
+        app:layout_constraintBottom_toTopOf="@id/miniPlayerBar"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
+    <!-- Compact "what's playing" strip - always visible above the list, tap to expand into
+         the full-screen Now Playing view. Deliberately just a title + play/pause: browsing the
+         list is the primary action down here, so this stays out of the way. -->
     <LinearLayout
-        android:id="@+id/controlsLayout"
+        android:id="@+id/miniPlayerBar"
         android:layout_width="0dp"
-        android:layout_height="wrap_content"
+        android:layout_height="64dp"
+        android:layout_marginTop="10dp"
         android:orientation="horizontal"
-        android:gravity="center"
+        android:gravity="center_vertical"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp"
+        android:background="@drawable/search_field_background"
+        android:clickable="true"
+        android:focusable="true"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <ImageView
+            android:id="@+id/miniStationLogo"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:layout_marginEnd="12dp"
+            android:background="@drawable/logo_background"
+            android:padding="6dp"
+            android:scaleType="centerCrop"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_radio_placeholder" />
+
+        <!-- Lives inside this fixed-height bar (not the top of the screen) so showing/hiding
+             it while connecting/buffering never reflows anything else on screen. -->
+        <ProgressBar
+            android:id="@+id/loadingSpinner"
+            style="?android:attr/progressBarStyleSmall"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_marginEnd="8dp"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/miniStationTitle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Select a station"
+            android:textStyle="bold"
+            android:textSize="15sp"
+            android:textColor="?android:attr/textColorPrimary"
+            android:maxLines="1"
+            android:ellipsize="end" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/miniPlayPauseButton"
+            style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:text="▶"
+            android:textSize="16sp" />
+
+    </LinearLayout>
+
+    <!-- Full-screen "Now Playing" player - hidden by default, slides in over everything above
+         when the mini-player bar is tapped. Holds every playback control (prev/play/next,
+         cast, sleep timer, favorite) so the compact views above can stay minimal. -->
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/nowPlayingOverlay"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="?attr/colorSurface"
+        android:visibility="gone"
+        android:elevation="8dp"
+        app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/prevButton"
-            style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
-            android:layout_width="56dp"
-            android:layout_height="56dp"
-            android:layout_margin="4dp"
-            android:text="⏮"
-            android:textSize="20sp" />
+            android:id="@+id/collapseNowPlayingButton"
+            style="@style/Widget.Material3.Button.IconButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="✕"
+            android:textColor="@android:color/white"
+            android:textSize="18sp"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent" />
 
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/playButton"
-            style="@style/Widget.Material3.Button.IconButton.Filled"
-            android:layout_width="56dp"
-            android:layout_height="56dp"
-            android:layout_margin="4dp"
-            android:text="▶"
-            android:textSize="20sp" />
+            android:id="@+id/fullFavoriteButton"
+            style="@style/Widget.Material3.Button.IconButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="☆"
+            android:textColor="@android:color/white"
+            android:textSize="22sp"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/nextButton"
-            style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
-            android:layout_width="56dp"
-            android:layout_height="56dp"
-            android:layout_margin="4dp"
-            android:text="⏭"
-            android:textSize="20sp" />
+        <ImageView
+            android:id="@+id/bigStationLogo"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_marginStart="32dp"
+            android:layout_marginEnd="32dp"
+            android:layout_marginTop="24dp"
+            android:background="@drawable/logo_background"
+            android:padding="24dp"
+            android:scaleType="centerCrop"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_radio_placeholder"
+            app:layout_constraintDimensionRatio="1:1"
+            app:layout_constraintTop_toBottomOf="@id/collapseNowPlayingButton"
+            app:layout_constraintBottom_toTopOf="@id/statusText"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintWidth_max="320dp" />
 
-        <androidx.mediarouter.app.MediaRouteButton
-            android:id="@+id/castButton"
-            android:layout_width="56dp"
-            android:layout_height="56dp"
-            android:layout_margin="4dp"
-            android:mediaRouteTypes="user" />
+        <TextView
+            android:id="@+id/statusText"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="Select a station"
+            android:gravity="center"
+            android:textSize="19sp"
+            android:textStyle="bold"
+            app:layout_constraintTop_toBottomOf="@id/bigStationLogo"
+            app:layout_constraintBottom_toTopOf="@id/metadataText"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/sleepTimerButton"
-            style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
-            android:layout_width="56dp"
-            android:layout_height="56dp"
-            android:layout_margin="4dp"
-            android:text="💤"
-            android:textSize="20sp" />
+        <TextView
+            android:id="@+id/metadataText"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="No station playing"
+            android:gravity="center"
+            android:textSize="13sp"
+            android:textColor="#888888"
+            app:layout_constraintTop_toBottomOf="@id/statusText"
+            app:layout_constraintBottom_toTopOf="@id/controlsLayout"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
 
-    </LinearLayout>
+        <LinearLayout
+            android:id="@+id/controlsLayout"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="16dp"
+            android:orientation="horizontal"
+            android:gravity="center"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/prevButton"
+                style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:layout_margin="4dp"
+                android:text="⏮"
+                android:textSize="20sp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/playButton"
+                style="@style/Widget.Material3.Button.IconButton.Filled"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:layout_margin="4dp"
+                android:text="▶"
+                android:textSize="20sp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/nextButton"
+                style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:layout_margin="4dp"
+                android:text="⏭"
+                android:textSize="20sp" />
+
+            <androidx.mediarouter.app.MediaRouteButton
+                android:id="@+id/castButton"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:layout_margin="4dp"
+                android:mediaRouteTypes="user" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/sleepTimerButton"
+                style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:layout_margin="4dp"
+                android:text="💤"
+                android:textSize="20sp" />
+
+        </LinearLayout>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

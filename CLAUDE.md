@@ -64,6 +64,34 @@ oversight - see "Known gaps" below.
   player, no direct stream URL, and TuneIn's public resolver API (`opml.radiotime.com`)
   no longer works without a partner token.
 
+## Casting architecture
+
+Casting loads a real **queue** (`RemoteMediaClient.queueLoad()` with `MediaQueueItem[]`,
+`REPEAT_MODE_REPEAT_ALL`), not a single `MediaLoadRequestData` item - a single item gives
+the receiver nothing to advance to, which is why native skip and Assistant ("Hey Google,
+next") didn't work before. The queue is built from `MainActivity.displayedStations` (the
+list currently on screen, i.e. whatever tab/search/sort/filter is active) starting at the
+tapped station, so cast prev/next stays scoped to what the user was actually looking at.
+`skipCastBy()` calls `queueNext()`/`queuePrev()` on the receiver's own queue instead of
+reloading a new item; `remoteMediaClientCallback.onStatusUpdated()` reads
+`mediaStatus.mediaInfo.contentId` (== the station's stream URL, since that's what's passed
+as the `MediaInfo` content id) to keep `currentStationId`/highlighting in sync with
+whatever the receiver is actually playing, including changes it made on its own (Assistant,
+hardware buttons).
+
+`CastOptionsProvider` configures `CastMediaOptions`/`NotificationOptions` so casting gets
+its own system notification with working prev/play/next - without this, the *only*
+playback notification was the local Media3 one, which controls the local player, not the
+Cast receiver actually making sound. `onCastSessionActive()` calls
+`mediaController?.stop()` (not `pause()`) for the same reason: leaving the local session
+merely paused kept its notification alive as a second, non-functional control surface
+alongside the new Cast one.
+
+Hardware volume keys don't reach the Cast device by default (the phone isn't playing a
+local audio stream for Android to attach them to) - `MainActivity.dispatchKeyEvent()`
+intercepts `KEYCODE_VOLUME_UP/DOWN` while `isCasting` and drives `CastSession.volume`
+directly instead.
+
 ## Gotchas hit during development (don't rediscover these)
 
 - **`MediaMetadata.MEDIA_TYPE_MUSIC_TRACK` does not exist** in media3-common 1.2.1 (a

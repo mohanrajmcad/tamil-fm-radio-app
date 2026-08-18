@@ -6,9 +6,11 @@ import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
+import coil.load
 
 class RadioStationAdapter(
     private val context: Context,
@@ -39,7 +41,10 @@ class RadioStationAdapter(
 
     class StationViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val indicator: View = view.findViewById(R.id.nowPlayingIndicator)
+        val logo: ImageView = view.findViewById(R.id.stationLogo)
         val name: TextView = view.findViewById(R.id.stationName)
+        val liveBadge: TextView = view.findViewById(R.id.liveBadge)
+        val badge: TextView = view.findViewById(R.id.qualityBadge)
         val url: TextView = view.findViewById(R.id.stationUrl)
         val favorite: TextView = view.findViewById(R.id.favoriteButton)
         val hide: TextView = view.findViewById(R.id.hideButton)
@@ -59,7 +64,23 @@ class RadioStationAdapter(
         holder.name.text = station.name
         holder.name.setTextColor(if (isSelected) ACCENT_COLOR else defaultNameColor)
         holder.indicator.setBackgroundColor(if (isSelected) ACCENT_COLOR else Color.TRANSPARENT)
-        holder.url.text = "${station.bitrate}kbps • ${station.country}".trim(' ', '•').trim()
+        val flag = CountryFlags.flagFor(station.country)
+        val countryLabel = if (flag != null) "$flag ${station.country}" else station.country
+        holder.url.text = "${station.bitrate}kbps • $countryLabel".trim(' ', '•').trim()
+
+        holder.logo.load(station.favicon.ifBlank { null }) {
+            placeholder(R.drawable.ic_radio_placeholder)
+            error(R.drawable.ic_radio_placeholder)
+            crossfade(true)
+        }
+
+        holder.liveBadge.visibility = if (station.isVerifiedLive) View.VISIBLE else View.GONE
+        if (station.bitrate >= HD_BITRATE_THRESHOLD) {
+            holder.badge.text = "HD"
+            holder.badge.visibility = View.VISIBLE
+        } else {
+            holder.badge.visibility = View.GONE
+        }
         holder.favorite.text = if (isFavorite) "★" else "☆"
         holder.favorite.setTextColor(if (isFavorite) ACCENT_COLOR else defaultNameColor)
         // Stations only ever appear hidden when browsing the Hidden tab itself, where the
@@ -94,5 +115,6 @@ class RadioStationAdapter(
 
     companion object {
         private val ACCENT_COLOR = Color.parseColor("#FF6F00")
+        private const val HD_BITRATE_THRESHOLD = 320
     }
 }

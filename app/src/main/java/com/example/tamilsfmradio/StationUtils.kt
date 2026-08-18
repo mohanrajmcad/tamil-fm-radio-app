@@ -47,7 +47,11 @@ object StationUtils {
     /**
      * Two API entries can point at the exact same stream (mirrors/relays) under different
      * display names, or share a display name while pointing at different mirror servers.
-     * Dedupe on both signals, keeping the higher-bitrate entry.
+     * Dedupe on both signals, keeping the higher-bitrate entry - except a manually curated
+     * CustomStations entry (isVerifiedLive) always wins a collision regardless of bitrate.
+     * CustomStations.ALL is appended after the API results (see RadioBrowserClient), so on a
+     * plain bitrate tiebreak the API's first-seen entry would otherwise always survive and the
+     * verified one would be silently dropped - defeating the reason CustomStations exists.
      */
     fun dedupe(stations: List<RadioStation>): List<RadioStation> {
         val byUrl = LinkedHashMap<String, RadioStation>()
@@ -55,20 +59,21 @@ object StationUtils {
             val key = station.url.trimEnd(';').trim().lowercase()
             if (key.isEmpty()) continue
             val existing = byUrl[key]
-            if (existing == null || station.bitrate > existing.bitrate) {
-                byUrl[key] = station
-            }
+            byUrl[key] = if (existing == null) station else preferred(station, existing)
         }
 
         val byName = LinkedHashMap<String, RadioStation>()
         for (station in byUrl.values) {
             val key = normalizeNameKey(station.name)
             val existing = byName[key]
-            if (existing == null || station.bitrate > existing.bitrate) {
-                byName[key] = station
-            }
+            byName[key] = if (existing == null) station else preferred(station, existing)
         }
         return byName.values.toList()
+    }
+
+    private fun preferred(a: RadioStation, b: RadioStation): RadioStation {
+        if (a.isVerifiedLive != b.isVerifiedLive) return if (a.isVerifiedLive) a else b
+        return if (a.bitrate >= b.bitrate) a else b
     }
 
     private fun normalizeNameKey(name: String): String {
