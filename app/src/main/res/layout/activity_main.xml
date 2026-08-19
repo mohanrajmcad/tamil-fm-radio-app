@@ -194,7 +194,7 @@
     <LinearLayout
         android:id="@+id/miniPlayerBar"
         android:layout_width="0dp"
-        android:layout_height="64dp"
+        android:layout_height="68dp"
         android:layout_marginTop="10dp"
         android:orientation="horizontal"
         android:gravity="center_vertical"
@@ -228,17 +228,37 @@
             android:layout_marginEnd="8dp"
             android:visibility="gone" />
 
-        <TextView
-            android:id="@+id/miniStationTitle"
+        <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Select a station"
-            android:textStyle="bold"
-            android:textSize="15sp"
-            android:textColor="?android:attr/textColorPrimary"
-            android:maxLines="1"
-            android:ellipsize="end" />
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/miniStationTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Select a station"
+                android:textStyle="bold"
+                android:textSize="15sp"
+                android:textColor="?android:attr/textColorPrimary"
+                android:maxLines="1"
+                android:ellipsize="end" />
+
+            <!-- Live "now playing" song from ICY stream metadata - only populated (and only
+                 then made visible) when a station actually sends it, so stations that don't
+                 just show a single clean line, same as before this existed. -->
+            <TextView
+                android:id="@+id/miniNowPlayingText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="11sp"
+                android:textColor="#888888"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:visibility="gone" />
+
+        </LinearLayout>
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/miniPlayPauseButton"

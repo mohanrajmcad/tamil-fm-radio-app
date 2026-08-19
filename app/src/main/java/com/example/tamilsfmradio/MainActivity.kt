@@ -63,6 +63,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var miniPlayerBar: View
     private lateinit var miniStationLogo: ImageView
     private lateinit var miniStationTitle: TextView
+    private lateinit var miniNowPlayingText: TextView
     private lateinit var miniPlayPauseButton: Button
     private lateinit var nowPlayingOverlay: View
     private lateinit var collapseNowPlayingButton: Button
@@ -131,6 +132,7 @@ class MainActivity : AppCompatActivity() {
         miniPlayerBar = findViewById(R.id.miniPlayerBar)
         miniStationLogo = findViewById(R.id.miniStationLogo)
         miniStationTitle = findViewById(R.id.miniStationTitle)
+        miniNowPlayingText = findViewById(R.id.miniNowPlayingText)
         miniPlayPauseButton = findViewById(R.id.miniPlayPauseButton)
         nowPlayingOverlay = findViewById(R.id.nowPlayingOverlay)
         collapseNowPlayingButton = findViewById(R.id.collapseNowPlayingButton)
@@ -729,6 +731,10 @@ class MainActivity : AppCompatActivity() {
      *  full-screen player, so neither can drift out of sync with the other. */
     private fun updateNowPlayingHeader(title: String, artworkUrl: String?) {
         miniStationTitle.text = title
+        // Clear any song line left over from whatever was playing before - it'll reappear
+        // once onMediaMetadataChanged fires for this station, if it sends ICY data at all.
+        miniNowPlayingText.text = ""
+        miniNowPlayingText.visibility = View.GONE
         val art = artworkUrl?.takeIf { it.isNotBlank() }
         miniStationLogo.load(art) {
             placeholder(R.drawable.ic_radio_placeholder)
@@ -835,6 +841,10 @@ class MainActivity : AppCompatActivity() {
                 if (displayTitle != null) {
                     metadataText.text = "$displayTitle • ${mediaMetadata.subtitle ?: ""}"
                 }
+                // Small second line in the mini-player bar - only shown for stations that
+                // actually send ICY song data, so the rest stay a single clean line.
+                miniNowPlayingText.text = songTitle ?: ""
+                miniNowPlayingText.visibility = if (songTitle != null) View.VISIBLE else View.GONE
             }
 
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
