@@ -37,6 +37,7 @@ class RadioPlaybackService : MediaLibraryService() {
     companion object {
         private const val TAG = "RadioPlaybackService"
         private const val ACTION_TOGGLE_FAVORITE = "com.example.tamilsfmradio.TOGGLE_FAVORITE"
+        const val ACTION_LANGUAGE_CHANGED = "com.example.tamilsfmradio.LANGUAGE_CHANGED"
     }
 
     private lateinit var player: ExoPlayer
@@ -108,7 +109,7 @@ class RadioPlaybackService : MediaLibraryService() {
         serviceScope.launch {
             try {
                 val raw = withContext(Dispatchers.IO) {
-                    RadioBrowserClient.getTamilStations()
+                    RadioBrowserClient.getStations(LanguagePrefs.get(this@RadioPlaybackService))
                 }
                 val deduped = StationUtils.filterQuality(StationUtils.dedupe(raw))
                     .map { it.copy(name = StationUtils.prettify(it.name)) }
@@ -191,10 +192,39 @@ class RadioPlaybackService : MediaLibraryService() {
      */
     private suspend fun prepareQuickStations(): List<RadioStation> {
         val raw = withContext(Dispatchers.IO) {
-            RadioBrowserClient.getTamilStations()
+            RadioBrowserClient.getStations(LanguagePrefs.get(this@RadioPlaybackService))
         }
         return StationUtils.filterQuality(StationUtils.dedupe(raw))
             .map { it.copy(name = StationUtils.prettify(it.name)) }
+    }
+
+    /**
+     * The phone UI re-fetches its own list the moment the user picks a new language, but this
+     * service runs its own independent fetch (see CLAUDE.md's dual-fetch note) - without this,
+     * native prev/next and Android Auto would keep serving the old language until the service
+     * happened to restart. If whatever's currently playing isn't in the new language's list
+     * (the common case), it stops rather than leaving the old-language audio running behind a
+     * browse list that no longer contains it; if it coincidentally is (e.g. a bilingual
+     * station), playback continues uninterrupted at its current position.
+     */
+    private fun onLanguageChanged() {
+        serviceScope.launch {
+            try {
+                val stations = prepareQuickStations()
+                val newItems = stations.map { it.toMediaItem() }
+                cachedMediaItems = newItems
+                val currentId = player.currentMediaItem?.mediaId
+                val newIndex = newItems.indexOfFirst { it.mediaId == currentId }
+                if (newIndex >= 0) {
+                    setPlayerPlaylist(newItems, newIndex, player.currentPosition)
+                } else {
+                    player.playWhenReady = false
+                    setPlayerPlaylist(newItems)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "onLanguageChanged: refetch failed", e)
+            }
+        }
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? {
@@ -270,6 +300,7 @@ class RadioPlaybackService : MediaLibraryService() {
             val defaultResult = super.onConnect(session, controller)
             val sessionCommands = defaultResult.availableSessionCommands.buildUpon()
                 .add(SessionCommand(ACTION_TOGGLE_FAVORITE, Bundle.EMPTY))
+                .add(SessionCommand(ACTION_LANGUAGE_CHANGED, Bundle.EMPTY))
                 .build()
             return MediaSession.ConnectionResult.accept(sessionCommands, defaultResult.availablePlayerCommands)
         }
@@ -288,6 +319,10 @@ class RadioPlaybackService : MediaLibraryService() {
                     Log.d(TAG, "onCustomCommand: toggled favorite for $mediaId -> $nowFavorite")
                     refreshFavoriteButton()
                 }
+                return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+            }
+            if (customCommand.customAction == ACTION_LANGUAGE_CHANGED) {
+                onLanguageChanged()
                 return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
             }
             return super.onCustomCommand(session, controller, customCommand, args)

@@ -32,6 +32,26 @@
             android:layout_marginStart="10dp"
             android:mediaRouteTypes="user" />
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/languageButton"
+            style="@style/Widget.Material3.Button.IconButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            android:text="🌐"
+            android:textColor="@android:color/white"
+            android:textSize="18sp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/infoButton"
+            style="@style/Widget.Material3.Button.IconButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            android:text="ℹ️"
+            android:textColor="@android:color/white"
+            android:textSize="18sp" />
+
     </LinearLayout>
 
     <EditText
@@ -74,7 +94,8 @@
             android:textSize="12sp"
             android:paddingStart="4dp"
             android:paddingEnd="4dp"
-            android:text="All" />
+            android:text="All"
+            android:textColor="@color/toggle_button_text" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/showFavoritesButton"
@@ -86,7 +107,8 @@
             android:textSize="12sp"
             android:paddingStart="4dp"
             android:paddingEnd="4dp"
-            android:text="★ Fav" />
+            android:text="★ Fav"
+            android:textColor="@color/toggle_button_text" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/showHiddenButton"
@@ -97,7 +119,8 @@
             android:textSize="12sp"
             android:paddingStart="4dp"
             android:paddingEnd="4dp"
-            android:text="🚫 Hidden" />
+            android:text="🚫 Hidden"
+            android:textColor="@color/toggle_button_text" />
 
     </com.google.android.material.button.MaterialButtonToggleGroup>
 
@@ -132,7 +155,8 @@
                     android:textSize="11sp"
                     android:paddingStart="10dp"
                     android:paddingEnd="10dp"
-                    android:text="⇅ Quality" />
+                    android:text="⇅ Quality"
+                    android:textColor="@color/toggle_button_text" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/sortByNameButton"
@@ -142,7 +166,8 @@
                     android:textSize="11sp"
                     android:paddingStart="10dp"
                     android:paddingEnd="10dp"
-                    android:text="A-Z Name" />
+                    android:text="A-Z Name"
+                    android:textColor="@color/toggle_button_text" />
 
             </com.google.android.material.button.MaterialButtonToggleGroup>
 
@@ -158,7 +183,8 @@
                 android:textSize="11sp"
                 android:paddingStart="10dp"
                 android:paddingEnd="10dp"
-                android:text="Quality: Any ▾" />
+                android:text="Quality: Any ▾"
+                android:textColor="@android:color/white" />
 
         </LinearLayout>
 
@@ -229,10 +255,12 @@
         <com.google.android.material.button.MaterialButton
             android:id="@+id/miniPlayPauseButton"
             style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:text="▶"
-            android:textSize="16sp" />
+            android:textSize="16sp"
+            android:textColor="@android:color/white"
+            app:backgroundTint="#FF6F00" />
 
     </LinearLayout>
 
@@ -348,7 +376,9 @@
                 android:layout_height="56dp"
                 android:layout_margin="4dp"
                 android:text="▶"
-                android:textSize="20sp" />
+                android:textSize="20sp"
+                android:textColor="@android:color/white"
+                app:backgroundTint="#FF6F00" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/nextButton"

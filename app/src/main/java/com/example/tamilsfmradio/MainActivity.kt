@@ -28,6 +28,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
+import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionToken
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -57,6 +58,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var nextButton: Button
     private lateinit var castButton: MediaRouteButton
     private lateinit var topCastButton: MediaRouteButton
+    private lateinit var languageButton: Button
+    private lateinit var infoButton: Button
     private lateinit var sleepTimerButton: Button
     private lateinit var miniPlayerBar: View
     private lateinit var miniStationLogo: ImageView
@@ -124,6 +127,8 @@ class MainActivity : AppCompatActivity() {
         nextButton = findViewById(R.id.nextButton)
         castButton = findViewById(R.id.castButton)
         topCastButton = findViewById(R.id.topCastButton)
+        languageButton = findViewById(R.id.languageButton)
+        infoButton = findViewById(R.id.infoButton)
         sleepTimerButton = findViewById(R.id.sleepTimerButton)
         miniPlayerBar = findViewById(R.id.miniPlayerBar)
         miniStationLogo = findViewById(R.id.miniStationLogo)
@@ -147,12 +152,91 @@ class MainActivity : AppCompatActivity() {
         stationList.layoutManager = LinearLayoutManager(this)
         onBackPressedDispatcher.addCallback(this, nowPlayingBackCallback)
 
-        loadStationsFromAPI()
         initializeController()
         initializeCastButton()
         setupButtonListeners()
         setupSearchAndFilter()
         setupNowPlayingOverlay()
+        languageButton.setOnClickListener { showLanguagePickerDialog(isFirstLaunch = false) }
+        infoButton.setOnClickListener { showInfoDialog() }
+
+        // The station fetch itself waits on a language choice the very first time the app
+        // runs - everything else above (controller, cast, listeners) doesn't depend on which
+        // language is picked, so it's set up regardless.
+        if (LanguagePrefs.isSet(this)) {
+            loadStationsFromAPI()
+        } else {
+            showLanguagePickerDialog(isFirstLaunch = true)
+        }
+    }
+
+    /**
+     * [isFirstLaunch] blocks dismissal (no station language means nothing to load yet) and
+     * skips the "did it actually change" check, since there's no current selection to compare
+     * against.
+     */
+    private fun showLanguagePickerDialog(isFirstLaunch: Boolean) {
+        val languages = AppLanguage.entries.toTypedArray()
+        val current = if (isFirstLaunch) null else LanguagePrefs.get(this)
+        val labels = languages.map { it.displayName }.toTypedArray()
+        val dialogBuilder = AlertDialog.Builder(this)
+            .setTitle(if (isFirstLaunch) "Choose your station language" else "Station language")
+            .setCancelable(!isFirstLaunch)
+            .setItems(labels) { _, index ->
+                val chosen = languages[index]
+                if (chosen != current) {
+                    LanguagePrefs.set(this, chosen)
+                    switchLanguage()
+                }
+            }
+        if (!isFirstLaunch) {
+            dialogBuilder.setNegativeButton("Cancel", null)
+        }
+        dialogBuilder.show()
+    }
+
+    /** Re-fetches the browsable list for the newly chosen language and tells the playback
+     *  service to do the same with its own independent fetch (see CLAUDE.md's dual-fetch
+     *  note) - otherwise native prev/next and Android Auto would keep serving the old
+     *  language after the on-screen list has already moved on. Anything already playing is
+     *  left alone rather than force-stopped - switching language changes what's browsable,
+     *  not what's currently in your ears. */
+    private fun switchLanguage() {
+        loadStationsFromAPI()
+        mediaController?.sendCustomCommand(
+            SessionCommand(RadioPlaybackService.ACTION_LANGUAGE_CHANGED, Bundle.EMPTY),
+            Bundle.EMPTY
+        )
+    }
+
+    /**
+     * Uses allStations - already in memory for whatever language is currently loaded - rather
+     * than fetching fresh, so this opens instantly with no network call. That means it can
+     * only report the currently selected language's numbers; switching language (🌐) and
+     * reopening this shows the other one.
+     */
+    private fun showInfoDialog() {
+        val language = LanguagePrefs.get(this)
+        val tierCounts = allStations.groupingBy { it.bitrate }.eachCount()
+            .toSortedMap(compareByDescending { it })
+        val breakdown = if (tierCounts.isEmpty()) {
+            "No stations loaded yet."
+        } else {
+            tierCounts.entries.joinToString("\n") { (bitrate, count) ->
+                "• ${bitrate}kbps: $count station${if (count == 1) "" else "s"}"
+            }
+        }
+        val message = "MR Radio streams live FM/internet radio, aggregated from " +
+            "radio-browser.info plus a hand-verified station list.\n\n" +
+            "Current mode: ${language.displayName}\n" +
+            "Stations loaded: ${allStations.size}\n\n" +
+            "By quality:\n$breakdown\n\n" +
+            "Tap 🌐 to switch language and see that mode's count instead."
+        AlertDialog.Builder(this)
+            .setTitle("About MR Radio")
+            .setMessage(message)
+            .setPositiveButton("OK", null)
+            .show()
     }
 
     private val remoteMediaClientCallback = object : RemoteMediaClient.Callback() {
@@ -436,13 +520,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun loadStationsFromAPI() {
-        Log.d("MainActivity", "Starting to load FM stations from API")
+        val language = LanguagePrefs.get(this)
+        Log.d("MainActivity", "Starting to load ${language.displayName} FM stations from API")
         loadingSpinner.visibility = View.VISIBLE
         statusText.text = "Loading stations..."
         lifecycleScope.launch {
             try {
                 val raw = withContext(Dispatchers.IO) {
-                    RadioBrowserClient.getTamilStations()
+                    RadioBrowserClient.getStations(language)
                 }
                 Log.d("MainActivity", "API returned ${raw.size} stations")
                 val deduped = StationUtils.filterQuality(StationUtils.dedupe(raw))
@@ -456,7 +541,7 @@ class MainActivity : AppCompatActivity() {
                 allStations = deduped
                 if (allStations.isNotEmpty()) {
                     val visibleCount = allStations.count { !HiddenStore.isHidden(this@MainActivity, it.url) }
-                    statusText.text = "Loaded $visibleCount Tamil stations"
+                    statusText.text = "Loaded $visibleCount ${language.displayName} stations"
                     refreshDisplayList()
                 } else {
                     statusText.text = "No stations found"
@@ -476,7 +561,7 @@ class MainActivity : AppCompatActivity() {
                     Log.d("MainActivity", "Auto-hiding ${newlyDead.size} dead stations")
                     newlyDead.forEach { HiddenStore.autoHide(this@MainActivity, it.url) }
                     val visibleCount = allStations.count { !HiddenStore.isHidden(this@MainActivity, it.url) }
-                    statusText.text = "Loaded $visibleCount Tamil stations"
+                    statusText.text = "Loaded $visibleCount ${language.displayName} stations"
                     refreshDisplayList()
                 } else if (newlyDead.isNotEmpty()) {
                     Log.w(

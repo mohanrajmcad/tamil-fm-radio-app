@@ -40,11 +40,23 @@ object RadioBrowserClient {
      * + tag searches, plus a small hand-curated list for stations whose registered stream
      * URL in the database is dead but whose site serves a working stream directly -
      * StationUtils.dedupe() cleans up the overlap between all of these.
+     *
+     * English doesn't need the same treatment - it's the majority language in
+     * radio-browser.info's database and reliably tagged, so a single language query already
+     * returns a large, well-populated set. There's also no hand-curated English list (see
+     * CustomStations.kt) - that safety net only exists for Tamil so far.
      */
-    suspend fun getTamilStations(): List<RadioStation> {
-        val byLanguage = api.searchStations(language = "tamil", limit = 320)
-        val byName = api.searchStations(name = "tamil", limit = 150)
-        val byTag = api.searchStations(tag = "tamil", limit = 100)
-        return byLanguage + byName + byTag + CustomStations.ALL
+    suspend fun getStations(language: AppLanguage): List<RadioStation> {
+        return when (language) {
+            AppLanguage.TAMIL -> {
+                val byLanguage = api.searchStations(language = "tamil", limit = 320)
+                val byName = api.searchStations(name = "tamil", limit = 150)
+                val byTag = api.searchStations(tag = "tamil", limit = 100)
+                byLanguage + byName + byTag + CustomStations.ALL
+            }
+            AppLanguage.ENGLISH -> {
+                api.searchStations(language = "english", limit = 320)
+            }
+        }
     }
 }

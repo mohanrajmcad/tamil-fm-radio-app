@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Material3's default OutlinedButton text color derives from colorPrimary (this app's deep
+     purple), which reads poorly against the dark background - force plain white instead. White
+     stays readable in both the unchecked (dark) and checked (orange-filled) states. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:color="@android:color/white" />
+</selector>
