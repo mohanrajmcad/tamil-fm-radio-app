@@ -13,6 +13,7 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Metadata
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.extractor.metadata.icy.IcyInfo
 import androidx.media3.session.CommandButton
@@ -51,7 +52,22 @@ class RadioPlaybackService : MediaLibraryService() {
     override fun onCreate() {
         super.onCreate()
 
-        player = ExoPlayer.Builder(this).build().apply {
+        // Stock ExoPlayer buffer settings (~15-50s) are tuned more for on-demand video than
+        // continuous live radio. A much bigger steady-state window here means a brief network
+        // blip gets absorbed from the buffer instead of audibly stalling - the tradeoff is
+        // listening slightly further behind the live broadcast (up to ~2 min), which is
+        // imperceptible for background radio. bufferForPlaybackMs stays low so tapping a
+        // station still starts quickly instead of waiting on the full buffer to fill.
+        val loadControl = DefaultLoadControl.Builder()
+            .setBufferDurationsMs(
+                /* minBufferMs = */ 30_000,
+                /* maxBufferMs = */ 120_000,
+                /* bufferForPlaybackMs = */ 2_500,
+                /* bufferForPlaybackAfterRebufferMs = */ 5_000
+            )
+            .build()
+
+        player = ExoPlayer.Builder(this).setLoadControl(loadControl).build().apply {
             val audioAttributes = AudioAttributes.Builder()
                 .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
                 .setUsage(C.USAGE_MEDIA)
