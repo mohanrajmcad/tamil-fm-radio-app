@@ -5,4 +5,11 @@
         <item name="colorSecondary">#FF6F00</item>
         <item name="android:statusBarColor">#4A148C</item>
     </style>
+
+    <!-- AlertDialog action buttons (Cancel/OK/Hide/etc.) are text-styled from colorPrimary
+         by default, which is this app's deep purple - same low-contrast issue as the toggle
+         buttons and play button. Applied explicitly to every AlertDialog.Builder(...) call. -->
+    <style name="AlertDialogTheme" parent="ThemeOverlay.Material3.MaterialAlertDialog">
+        <item name="colorPrimary">@android:color/white</item>
+    </style>
 </resources>

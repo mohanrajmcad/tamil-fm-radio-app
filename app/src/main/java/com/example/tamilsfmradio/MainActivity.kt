@@ -179,7 +179,7 @@ class MainActivity : AppCompatActivity() {
         val languages = AppLanguage.entries.toTypedArray()
         val current = if (isFirstLaunch) null else LanguagePrefs.get(this)
         val labels = languages.map { it.displayName }.toTypedArray()
-        val dialogBuilder = AlertDialog.Builder(this)
+        val dialogBuilder = AlertDialog.Builder(this, R.style.AlertDialogTheme)
             .setTitle(if (isFirstLaunch) "Choose your station language" else "Station language")
             .setCancelable(!isFirstLaunch)
             .setItems(labels) { _, index ->
@@ -232,7 +232,7 @@ class MainActivity : AppCompatActivity() {
             "Stations loaded: ${allStations.size}\n\n" +
             "By quality:\n$breakdown\n\n" +
             "Tap 🌐 to switch language and see that mode's count instead."
-        AlertDialog.Builder(this)
+        AlertDialog.Builder(this, R.style.AlertDialogTheme)
             .setTitle("About MR Radio")
             .setMessage(message)
             .setPositiveButton("OK", null)
@@ -638,7 +638,7 @@ class MainActivity : AppCompatActivity() {
             refreshDisplayList()
             return
         }
-        AlertDialog.Builder(this)
+        AlertDialog.Builder(this, R.style.AlertDialogTheme)
             .setTitle("Hide this station?")
             .setMessage("\"${station.name}\" will move to the Hidden tab. You can restore it from there anytime.")
             .setPositiveButton("Hide") { _, _ ->
@@ -983,7 +983,7 @@ class MainActivity : AppCompatActivity() {
         val options = arrayOf("Off", "10 min", "30 min", "1 hour", "2 hours")
         val minutes = intArrayOf(0, 10, 30, 60, 120)
 
-        AlertDialog.Builder(this)
+        AlertDialog.Builder(this, R.style.AlertDialogTheme)
             .setTitle("Sleep Timer")
             .setSingleChoiceItems(options, 0) { dialog, which ->
                 setSleepTimer(minutes[which])
