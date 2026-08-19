@@ -58,8 +58,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var nextButton: Button
     private lateinit var castButton: MediaRouteButton
     private lateinit var topCastButton: MediaRouteButton
-    private lateinit var languageButton: Button
-    private lateinit var infoButton: Button
+    private lateinit var overflowMenuButton: Button
     private lateinit var sleepTimerButton: Button
     private lateinit var miniPlayerBar: View
     private lateinit var miniStationLogo: ImageView
@@ -127,8 +126,7 @@ class MainActivity : AppCompatActivity() {
         nextButton = findViewById(R.id.nextButton)
         castButton = findViewById(R.id.castButton)
         topCastButton = findViewById(R.id.topCastButton)
-        languageButton = findViewById(R.id.languageButton)
-        infoButton = findViewById(R.id.infoButton)
+        overflowMenuButton = findViewById(R.id.overflowMenuButton)
         sleepTimerButton = findViewById(R.id.sleepTimerButton)
         miniPlayerBar = findViewById(R.id.miniPlayerBar)
         miniStationLogo = findViewById(R.id.miniStationLogo)
@@ -157,8 +155,7 @@ class MainActivity : AppCompatActivity() {
         setupButtonListeners()
         setupSearchAndFilter()
         setupNowPlayingOverlay()
-        languageButton.setOnClickListener { showLanguagePickerDialog(isFirstLaunch = false) }
-        infoButton.setOnClickListener { showInfoDialog() }
+        overflowMenuButton.setOnClickListener { showOverflowMenu() }
 
         // The station fetch itself waits on a language choice the very first time the app
         // runs - everything else above (controller, cast, listeners) doesn't depend on which
@@ -175,6 +172,29 @@ class MainActivity : AppCompatActivity() {
      * skips the "did it actually change" check, since there's no current selection to compare
      * against.
      */
+    /**
+     * Consolidates Cast/Language/Info into one overflow icon instead of three separate ones
+     * cluttering the title row. "Cast to device" delegates to topCastButton.performClick() -
+     * MediaRouteButton owns real device-picker/route-selection behavior that a plain menu
+     * item can't replicate, so the button stays in the layout (just hidden) purely to keep
+     * that working under the hood.
+     */
+    private fun showOverflowMenu() {
+        val popup = PopupMenu(this, overflowMenuButton)
+        popup.menu.add(0, 0, 0, "Cast to device")
+        popup.menu.add(0, 1, 1, "Language")
+        popup.menu.add(0, 2, 2, "About")
+        popup.setOnMenuItemClickListener { item ->
+            when (item.itemId) {
+                0 -> topCastButton.performClick()
+                1 -> showLanguagePickerDialog(isFirstLaunch = false)
+                2 -> showInfoDialog()
+            }
+            true
+        }
+        popup.show()
+    }
+
     private fun showLanguagePickerDialog(isFirstLaunch: Boolean) {
         val languages = AppLanguage.entries.toTypedArray()
         val current = if (isFirstLaunch) null else LanguagePrefs.get(this)
