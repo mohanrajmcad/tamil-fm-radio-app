@@ -825,8 +825,15 @@ class MainActivity : AppCompatActivity() {
             }
 
             override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) {
-                if (mediaMetadata.title != null) {
-                    metadataText.text = "${mediaMetadata.title} • ${mediaMetadata.subtitle ?: ""}"
+                // The service puts the live "now playing" song (from ICY stream metadata,
+                // where the station sends it) in the artist field, keeping title reserved for
+                // the station's own identity - see RadioPlaybackService.updateNowPlayingSong().
+                // "MR Radio" is the generic placeholder every station starts with before any
+                // ICY data has arrived (if it ever does), so it doesn't count as real song info.
+                val songTitle = mediaMetadata.artist?.toString()?.takeIf { it.isNotBlank() && it != "MR Radio" }
+                val displayTitle = songTitle ?: mediaMetadata.title
+                if (displayTitle != null) {
+                    metadataText.text = "$displayTitle • ${mediaMetadata.subtitle ?: ""}"
                 }
             }
 

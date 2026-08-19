@@ -10,9 +10,11 @@ import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.media3.common.Metadata
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.extractor.metadata.icy.IcyInfo
 import androidx.media3.session.CommandButton
 import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.LibraryResult
@@ -83,6 +85,24 @@ class RadioPlaybackService : MediaLibraryService() {
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 refreshFavoriteButton()
             }
+
+            // Most of these streams are Shoutcast/Icecast and broadcast the currently
+            // playing song inline as ICY metadata - ExoPlayer surfaces it here as a raw
+            // event, separate from (and not merged into) Player.getMediaMetadata() by
+            // default. Station identity (title) stays put; the live song goes in the artist
+            // field, which is the field the phone UI/notification treat as the "now playing"
+            // line - see MainActivity.onMediaMetadataChanged().
+            override fun onMetadata(metadata: Metadata) {
+                for (i in 0 until metadata.length()) {
+                    val entry = metadata.get(i)
+                    if (entry is IcyInfo) {
+                        val songTitle = entry.title?.trim()
+                        if (!songTitle.isNullOrBlank()) {
+                            updateNowPlayingSong(songTitle)
+                        }
+                    }
+                }
+            }
         })
         refreshFavoriteButton()
 
@@ -102,6 +122,24 @@ class RadioPlaybackService : MediaLibraryService() {
         val mediaId = player.currentMediaItem?.mediaId
         val isFavorite = mediaId != null && FavoritesStore.isFavorite(this, mediaId)
         mediaLibrarySession.setCustomLayout(listOf(favoriteCommandButton(isFavorite)))
+    }
+
+    /**
+     * replaceMediaItem() patches the currently playing item's metadata in place - unlike
+     * setMediaItems(), it doesn't reload/re-buffer the stream, so a song change every few
+     * minutes doesn't cause an audible glitch. cachedMediaItems (the browsable list) is
+     * deliberately left untouched: the live song is specific to whatever's playing right now,
+     * not something that belongs in a station's static browse entry.
+     */
+    private fun updateNowPlayingSong(songTitle: String) {
+        val index = player.currentMediaItemIndex
+        val currentItem = player.currentMediaItem ?: return
+        if (currentItem.mediaMetadata.artist?.toString() == songTitle) return
+        val updatedMetadata = currentItem.mediaMetadata.buildUpon()
+            .setArtist(songTitle)
+            .build()
+        val updatedItem = currentItem.buildUpon().setMediaMetadata(updatedMetadata).build()
+        player.replaceMediaItem(index, updatedItem)
     }
 
     private fun fetchStations() {
