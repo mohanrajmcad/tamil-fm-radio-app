@@ -619,14 +619,34 @@ class MainActivity : AppCompatActivity() {
                     FavoritesStore.toggle(this, station.url)
                     refreshDisplayList()
                 },
-                onHideToggle = { station ->
-                    HiddenStore.toggle(this, station.url)
-                    refreshDisplayList()
-                }
+                onHideToggle = { station -> confirmAndToggleHidden(station) }
             )
             stationList.adapter = adapter
             highlightSelected(scrollToPosition = true)
         }
+    }
+
+    /**
+     * Only confirms when actually hiding - restoring from the Hidden tab is low-risk and
+     * easily reversible (just tap it again from All/Favorites), so asking there would just be
+     * friction. Matches the existing "↺ vs 🚫" icon swap, which already treats the Hidden tab
+     * as a different, softer action than hiding in the first place.
+     */
+    private fun confirmAndToggleHidden(station: RadioStation) {
+        if (HiddenStore.isHidden(this, station.url)) {
+            HiddenStore.toggle(this, station.url)
+            refreshDisplayList()
+            return
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Hide this station?")
+            .setMessage("\"${station.name}\" will move to the Hidden tab. You can restore it from there anytime.")
+            .setPositiveButton("Hide") { _, _ ->
+                HiddenStore.toggle(this, station.url)
+                refreshDisplayList()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     /**
